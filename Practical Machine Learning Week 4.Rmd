@@ -1,0 +1,119 @@
+---
+title: "Practical Machince Learning Week 4"
+author: "Martin Flores"
+date: "3/19/2021"
+output: html_document
+---
+
+
+
+Import Libraries that are necessary.
+```{r}
+library(knitr)
+library(caret)
+library(rpart)
+library(rattle.data)
+library(rpart.plot)
+library(randomForest)
+library(corrplot)
+```
+load the dataset from URL. to have a practical training and test set the traning set is to be 70% for modelingand test set is 30% for validations.
+
+```{r}
+UTR<- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+UTE <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+tr <- read.csv(url(UTR))
+te <- read.csv(url(UTE))
+inTr <- createDataPartition(tr$classe, p=0.7, list=FALSE)
+TrS <- tr[inTr, ]
+TeS  <- tr[-inTr, ]
+```
+```{r}
+dim(TrS)
+```
+```{r}
+dim(TeS)
+```
+Too much NA variables must be cleaned NZV and ID variables also remove.
+
+```{r}
+NZV <- nearZeroVar(TrS)
+TrS <- TrS[, -NZV]
+TeS <- TeS[, -NZV]
+```
+```{r}
+dim(TrS)
+```
+```{r}
+dim(TeS)
+```
+```{r}
+AllNA    <- sapply(TrS, function(x) mean(is.na(x))) > 0.95
+TrS <- TrS[, AllNA==FALSE]
+TeS  <- TeS[, AllNA==FALSE]
+```
+```{r}
+dim(TrS)
+```
+```{r}
+dim(TeS)
+```
+```{r}
+TrS <- TrS[, -(1:5)]
+TeS  <- TeS[, -(1:5)]
+```
+```{r}
+dim(TrS)
+```
+```{r}
+dim(TeS)
+```
+
+The model regression in training data set are used to see the difference between two methods such as the Random forest and decision tree method will be used for the quiz predictions.
+
+##The Decision tree
+
+```{r}
+set.seed(12345)
+MFDT <- rpart(classe ~ ., data=TrS, method="class")
+rpart.plot(MFDT)
+```
+
+```{r}
+PDT <- predict(MFDT, newdata=TeS, type="class")
+CMDT <- confusionMatrix(PDT,as.factor(TeS$classe))
+CMDT
+```
+
+```{r}
+plot(CMDT$table, col = CMDT$byClass, main = paste("Decision Tree - Accuracy =", round(CMDT$overall['Accuracy'], 4)))
+```
+
+##The Random forest
+
+```{r}
+set.seed(12345)
+CRF <- trainControl(method="cv", number=3, verboseIter=FALSE)
+MFRF <- train(classe ~ ., data=TrS, method="rf", trControl=CRF)
+MFRF$finalModel
+```
+```{r}
+PRF <- predict(MFRF, newdata=TeS)
+CMRF <- confusionMatrix(PRF,as.factor(TeS$classe))
+CMRF
+```
+
+Here we can see that Random forest has the HIghest accuracy
+
+```{r}
+plot(CMRF$table, col = CMRF$byClass, main = paste("Random Forest - Accuracy =", round(CMRF$overall['Accuracy'], 4)))
+```
+
+Prediction on 20 different test cases we use the MFRF the random forest because it has a highest accuracy 99.78% rather than the decision tree model has a 78.86%
+
+```{r}
+PT<- predict(MFRF, newdata=te)
+PT
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
